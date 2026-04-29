@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { useState, useCallback } from 'react';
+import { View, StyleSheet, Text, Image } from 'react-native';
 import MapView, { Marker, Callout } from 'react-native-maps';
-// TODO: Importar AsyncStorage
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 
-// Define o formato que o segredo terá
+const STORAGE_KEY = '@geovault_segredos';
+
 interface Segredo {
   id: string;
   texto: string;
@@ -15,21 +17,55 @@ interface Segredo {
 export default function MapaScreen() {
   const [segredos, setSegredos] = useState<Segredo[]>([]);
 
-  // Carrega os dados toda vez que a tela é aberta
-  useEffect(() => {
-    carregarSegredos();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      carregarSegredos();
+    }, [])
+  );
 
   const carregarSegredos = async () => {
-    // TODO 5: Ler a lista de segredos do AsyncStorage, fazer JSON.parse() e colocar no estado setSegredos.
+    try {
+      const json = await AsyncStorage.getItem(STORAGE_KEY);
+      if (json) {
+        const lista: Segredo[] = JSON.parse(json);
+        setSegredos(lista);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar segredos:', error);
+    }
+  };
+
+  // cwb como região padrão
+  const getInitialRegion = () => {
+    if (segredos.length > 0) {
+      const latitudes = segredos.map(s => s.latitude);
+      const longitudes = segredos.map(s => s.longitude);
+      const centerLat = (Math.min(...latitudes) + Math.max(...latitudes)) / 2;
+      const centerLng = (Math.min(...longitudes) + Math.max(...longitudes)) / 2;
+      const latDelta = Math.max(Math.max(...latitudes) - Math.min(...latitudes), 0.01) * 1.5;
+      const lngDelta = Math.max(Math.max(...longitudes) - Math.min(...longitudes), 0.01) * 1.5;
+      return {
+        latitude: centerLat,
+        longitude: centerLng,
+        latitudeDelta: latDelta,
+        longitudeDelta: lngDelta,
+      };
+    }
+    // cwb como região padrão
+    return {
+      latitude: -25.42778,
+      longitude: -49.27306,
+      latitudeDelta: 0.05,
+      longitudeDelta: 0.05,
+    };
   };
 
   return (
     <View style={styles.container}>
-      {/* TODO 6: O MapView precisa receber o initialRegion ou region */}
-      <MapView style={styles.map}>
-
-        {/* TODO 7: Fazer um map() no array de segredos para criar os Markers */}
+      <MapView
+        style={styles.map}
+        initialRegion={getInitialRegion()}
+      >
         {segredos.map((segredo) => (
           <Marker
             key={segredo.id}
@@ -38,12 +74,17 @@ export default function MapaScreen() {
             <Callout>
               <View style={styles.calloutContainer}>
                 <Text style={styles.calloutText}>{segredo.texto}</Text>
-                {/* Desafio Bônus: Mostrar a miniatura da foto aqui dentro! */}
+                {segredo.fotoUri && (
+                  <Image
+                    source={{ uri: segredo.fotoUri }}
+                    style={styles.calloutImage}
+                    resizeMode="cover"
+                  />
+                )}
               </View>
             </Callout>
           </Marker>
         ))}
-
       </MapView>
 
       {segredos.length === 0 && (
@@ -60,6 +101,7 @@ const styles = StyleSheet.create({
   map: { width: '100%', height: '100%' },
   calloutContainer: { width: 150, padding: 5 },
   calloutText: { fontWeight: 'bold', textAlign: 'center' },
+  calloutImage: { width: 140, height: 100, borderRadius: 4 },
   avisoContainer: { position: 'absolute', top: 50, alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.7)', padding: 10, borderRadius: 20 },
   avisoText: { color: '#fff' }
 });

@@ -38,6 +38,18 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permita o acesso à câmera!"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permitir que acessamos seu local para salvar registros dos segredos!"
+        }
       ]
     ],
     "experiments": {
